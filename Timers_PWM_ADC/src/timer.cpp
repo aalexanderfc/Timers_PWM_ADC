@@ -1,42 +1,47 @@
 #include <avr/io.h>
 #include <avr/interrupt.h>
+#include <util/delay.h>
 
-#define LED_PIN_PORT PORTD  // PORTD definieras för att styra utgången av digitala stiften
-#define LED_PIN_DDR  DDRD   // Data direction register används för att sätta stiftet som utgång
-#define LED_PIN_NUMBER PIND3  // PIND3 motsvarar digitalt pin 3
+#define LED_PIN_DDR DDRD  // Data Direction Register för LED-pinnen
+#define LED_PIN_PORT PORTD  // Portregister för LED-pinnen
+#define LED_PIN PD3  // LED-pinnen
 
-volatile bool ledState = false;
+volatile uint16_t adcValue = 0;  // Global variabel för att lagra ADC-värdet
 
-// Timer1 overflow interrupt service routine (ISR)
-ISR(TIMER1_OVF_vect) {
-    TCNT1 = 31249; // Återställ timerpreload
-    // Växla LED-läge
-    ledState = !ledState;
+void ADC_Init() {
+    ADMUX = (1<<REFS0);  // AVCC med extern kondensator vid AREF-pinnen
+    ADCSRA = (1<<ADEN)|(1<<ADPS2)|(1<<ADPS1)|(1<<ADPS0);  // Aktivera ADC och sätt prescaler till 128
 }
 
-void initTimer1() {
-    TCCR1A = 0; // Initiera kontrollregistret A för Timer1
-    TCCR1B = 0; // Initiera kontrollregistret B för Timer1
-    TCCR1B |= (1 << CS11) | (1 << CS10); // Ange prescaler till 64
-    TCNT1 = 31249; // Ladda förval Timer1 med värdet för en 200 ms period
-    TIMSK1 |= (1 << TOIE1); // Aktivera Timer1 overflow interrupt
+void delay_ms(int ms) {
+    for (int i = 0; i < ms; i++) {
+        _delay_ms(1);  // Fördröjning på 1 ms
+    }
 }
 
-void initLED() {
-    LED_PIN_DDR |= (1 << LED_PIN_NUMBER); // Sätt LED pin som utgång
+uint16_t ADC_Read(uint8_t ch) {
+    ch &= 0b00000111;  // Behåll endast de tre sista bitarna
+    ADMUX = (ADMUX & 0xF8)|ch;  // Rensa de tre sista bitarna innan ORing
+    ADCSRA |= (1<<ADSC);  // Starta enkel konvertering
+    while(!(ADCSRA & (1<<ADIF)));  // Vänta tills konverteringen är klar
+    ADCSRA|=(1<<ADIF);  // Rensa ADIF genom att skriva ett till det
+    return(ADC);  // Returnera ADC-värdet
 }
 
-void setup() {
-    initTimer1(); // Initiera Timer1
-    initLED(); // Initiera LED
-    sei(); // Aktivera globala interrupts
+void USART_Init(unsigned int ubrr) {
+    UBRR0H = (unsigned char)(ubrr>>8);  // Sätt de högre 8 bitarna av baud rate-registret
+    UBRR0L = (unsigned char)ubrr;  // Sätt de lägre 8 bitarna av baud rate-registret
+    UCSR0B = (1<<RXEN0)|(1<<TXEN0);  // Aktivera mottagare och sändare
+    UCSR0C = (1<<USBS0)|(3<<UCSZ00);  // Sätt stoppbit och karaktärsstorlek
 }
 
-// Funktion för att uppdatera LED-läge i main loopen
-void updateLED() {
-    if (ledState) {
-        LED_PIN_PORT |= (1 << LED_PIN_NUMBER); // Slå på LED
-    } else {
-        LED_PIN_PORT &= ~(1 << LED_PIN_NUMBER); // Slå av LED
+void USART_Transmit(unsigned char data) {
+    while (!(UCSR0A & (1<<UDRE0)));  // Vänta tills bufferten är tom
+    UDR0 = data;  // Skicka data
+}
+
+void USART_SendString(const char* str) {
+    while (*str) {
+        USART_Transmit(*str++);  // Skicka varje tecken i strängen
     }
 }
