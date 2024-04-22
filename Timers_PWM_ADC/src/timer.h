@@ -7,9 +7,9 @@
 #define BAUD 9600
 #define MYUBRR F_CPU/16/BAUD-1
 
-#define LED_PIN_DDR DDRD
-#define LED_PIN_PORT PORTD
-#define LED_PIN PD3
+#define LED_PIN_DDR DDRD  // Data Direction Register för LED-pinnen
+#define LED_PIN_PORT PORTD  // Portregister för LED-pinnen
+#define LED_PIN PD3  // LED-pinnen
 
 extern volatile uint16_t adcValue;
 

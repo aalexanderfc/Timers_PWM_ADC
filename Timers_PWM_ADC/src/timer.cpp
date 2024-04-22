@@ -2,9 +2,6 @@
 #include <avr/interrupt.h>
 #include <util/delay.h>
 
-#define LED_PIN_DDR DDRD  // Data Direction Register för LED-pinnen
-#define LED_PIN_PORT PORTD  // Portregister för LED-pinnen
-#define LED_PIN PD3  // LED-pinnen
 
 volatile uint16_t adcValue = 0;  // Global variabel för att lagra ADC-värdet
 
