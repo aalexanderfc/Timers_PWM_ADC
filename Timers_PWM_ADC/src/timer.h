@@ -1,14 +1,14 @@
+#include <stdint.h> 
 #ifndef TIMER_H
 #define TIMER_H
 
-#include <avr/io.h>
-#ifdef F_CPU
+#ifndef F_CPU
 #define F_CPU 16000000UL
 #endif
-#define BAUD 9600
-#define MYUBRR F_CPU/16/BAUD-1
 
-// Externally defined variable
+#define USART_BAUDRATE 9600
+#define MYUBRR (F_CPU/16/USART_BAUDRATE-1)
+
 extern volatile uint16_t adcValue;
 
 // Function prototypes

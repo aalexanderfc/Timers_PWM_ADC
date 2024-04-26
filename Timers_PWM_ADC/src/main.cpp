@@ -13,14 +13,11 @@
 
 void parseCommand(char* command);
 
-int main() {
+int main() {    
 
     
     USART_Init(MYUBRR);//startar USART
-    //ADC_Init();
     LEDTimer_Init();
-
-   //ADCSRA |= (1 << ADIE);// Enable ADC interrupt
     sei();// Enable global interrupts
 
     char buffer[BUFFER_SIZE] = {0};

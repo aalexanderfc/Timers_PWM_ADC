@@ -10,7 +10,7 @@ void USART_Init(unsigned int ubrr) {
     UBRR0H = (unsigned char)(ubrr >> 8); // Set baud rate
     UBRR0L = (unsigned char)ubrr;
     UCSR0B = (1 << RXEN0) | (1 << TXEN0); // Enable receiver and transmitter
-    UCSR0C = (1 << USBS0) | (3 << UCSZ00); // Set frame format: 8 data, 2 stop bit
+    UCSR0C = (3 << UCSZ01) | (3 << UCSZ00); // Set frame format: 8 data, 1 stop bit
 }
 
 void ADC_Init() {
