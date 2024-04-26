@@ -1,0 +1,12 @@
+{
+	"folders": [
+		{
+			"path": "../.."
+		},
+		{
+			"name": "Timers_PWM_ADC",
+			"path": ".."
+		}
+	],
+	"settings": {}
+}
