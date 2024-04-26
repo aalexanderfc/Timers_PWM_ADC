@@ -6,6 +6,7 @@
 
 volatile uint8_t ledPower = 128;  // Variable for LED power (0-255), initialized to a mid-range value for visibility
 volatile uint16_t ledPeriod = 1000;  // Default period for LED blinking (1 second in ms)
+volatile uint16_t overflowCounter = 0;  // Counter for timer overflows
 
 void LEDTimer_Init() {
     // Timer1 CTC mode
@@ -24,6 +25,7 @@ void LEDTimer_Init() {
     sei();  // Enable interrupts globally
 }
 
+
 ISR(TIMER1_COMPA_vect) {
     static uint8_t toggle = 0;
     toggle = !toggle;
@@ -31,6 +33,15 @@ ISR(TIMER1_COMPA_vect) {
         OCR2B = ledPower;  // Set to specified power level
     } else {
         OCR2B = 0;  // Turn off the LED
+    }
+}
+
+ISR(TIMER1_OVF_vect) {
+    overflowCounter++;
+    if (overflowCounter >= ledPeriod / 65536) {
+        overflowCounter = 0;
+        // Trigger COMPARE interrupt manually
+        TIFR1 |= (1 << OCF1A);
     }
 }
 
@@ -55,9 +66,10 @@ void LEDTimer_SetPeriod(uint16_t period) {
     } else if (ticks < 1048576) { // Use prescaler 256
         TCCR1B = (1 << WGM12) | (1 << CS12); // CTC mode, prescaler 256
         OCR1A = ticks / 256 - 1;
-    } else { // Use prescaler 1024
+    } else { // Use prescaler 1024 and handle overflow
         TCCR1B = (1 << WGM12) | (1 << CS12) | (1 << CS10); // CTC mode, prescaler 1024
-        OCR1A = ticks / 1024 - 1;
+        OCR1A = 65535; // Set to maximum value
+        overflowCounter = ticks / 1024 / 65536; // Calculate overflow count needed to reach the desired period
     }
 
     TCNT1 = 0;  // Reset timer counter to ensure immediate effect
