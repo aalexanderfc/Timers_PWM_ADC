@@ -1,15 +1,22 @@
+#include <stdint.h> 
+#ifndef TIMER_H
+#define TIMER_H
 
-#ifndef TIMER_H_
-#define TIMER_H_
+#ifndef F_CPU
+#define F_CPU 16000000UL
+#endif
 
-#include <avr/io.h>
-#include <avr/interrupt.h>
+#define USART_BAUDRATE 9600
+#define MYUBRR (F_CPU/16/USART_BAUDRATE-1)
 
-extern volatile bool ledState;
+extern volatile uint16_t adcValue;
 
-void initTimer1();
-void initLED();
-void setup();
-void updateLED();
+// Function prototypes
+void ADC_Init();
+void USART_Init(unsigned int ubrr);
+bool USART_Available();
+char USART_Receive();
+void USART_Transmit(unsigned char data);
+void USART_SendString(const char* str);
 
-#endif /* TIMER_H_ */
+#endif // TIMER_H
