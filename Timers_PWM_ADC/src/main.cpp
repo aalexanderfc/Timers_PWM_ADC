@@ -1,53 +1,49 @@
 #include "timer.h"
+#include "LEDTimer.h"
 #include <avr/io.h>
-#include <stdio.h>
-#include <util/delay.h>
 #include <avr/interrupt.h>
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
 
-#define THRESHOLD 0.04  // Tröskelvärde för att betrakta spänningen som 0V
+#define VREF 5.0        // Referensspänning för ADC
+#define ADC_MAX 1023.0  // Maximalt värde för ADC med 10 bits upplösning
+#define THRESHOLD 0.04  // Spänningsgräns för LED-effekt
+ #define BUFFER_SIZE 50 // Storlek på mottagningsbuffert för USART
 
-// Interrupt Service Routine för ADC
-ISR(ADC_vect) {
-    adcValue = ADC;  // Läs ADC-värdet från A0
-}
+void parseCommand(char* command);
 
 int main() {
-    char buffer[32];
-    double voltage;
 
-    ADC_Init();  // Initialisera ADC
-    USART_Init(MYUBRR);  // Initialisera USART
-    LED_PIN_DDR |= (1<<LED_PIN);  // Sätt LED-pinnen som utgång
+    
+    USART_Init(MYUBRR);//startar USART
+    //ADC_Init();
+    LEDTimer_Init();
 
-// Aktivera ADC-interrupt
-ADCSRA |= (1 << ADIE);
-// Aktivera globala interrupt
-sei();
+   //ADCSRA |= (1 << ADIE);// Enable ADC interrupt
+    sei();// Enable global interrupts
+
+    char buffer[BUFFER_SIZE] = {0};
+    int bufIndex = 0;
 
     while (1) {
-        // Starta ADC-konvertering
-        ADCSRA |= (1 << ADSC);
-
-        voltage = adcValue * (5.0 / 1023.0);  // Beräkna spänningen
-
-        int voltage_int = (int)voltage;
-        int voltage_frac = (int)(voltage * 100) % 100;  // Hämta de två första decimalplatserna
-        sprintf(buffer, "ADC: %d, Spänning: %d.%02dV\n", adcValue, voltage_int, voltage_frac);  // Förbered strängen
-
-        USART_SendString(buffer);  // Skicka strängen via USART
-
-        if (voltage <= THRESHOLD) {
-            LED_PIN_PORT |= (1<<LED_PIN);  // LED på
-        } else {
-            // Blinka LED med en frekvens som är omvänt proportionell mot spänningen
-            LED_PIN_PORT |= (1<<LED_PIN);  // LED på
-            delay_ms(100 * voltage / 5);  // Fördröjning proportionell mot spänningen
-            LED_PIN_PORT &= ~(1<<LED_PIN);  // LED av
-            delay_ms(100 * voltage / 5);  // Fördröjning proportionell mot spänningen
+        if (USART_Available()) {
+            char receivedChar = USART_Receive();
+            if (receivedChar == '\r' || receivedChar == '\n') {
+                USART_SendString("Kommando mottaget!\n");  // Feedback till användaren
+                buffer[bufIndex] = '\0';
+                parseCommand(buffer);        
+                memset(buffer, 0, BUFFER_SIZE);  // Rensa bufferten helt
+                bufIndex = 0;
+            } else if (bufIndex < BUFFER_SIZE - 1) {
+                buffer[bufIndex++] = receivedChar;
+            } else {
+                USART_SendString("Error: Buffer overflow\n");
+                memset(buffer, 0, BUFFER_SIZE);
+                bufIndex = 0;
+            }
         }
     }
 
-
     return 0;
-
 }

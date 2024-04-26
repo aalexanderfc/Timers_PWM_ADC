@@ -1,44 +1,39 @@
 #include <avr/io.h>
 #include <avr/interrupt.h>
-#include <util/delay.h>
+#include "timer.h"
 
-
-volatile uint16_t adcValue = 0;  // Global variabel för att lagra ADC-värdet
-
-void ADC_Init() {
-    ADMUX = (1<<REFS0);  // AVCC med extern kondensator vid AREF-pinnen
-    ADCSRA = (1<<ADEN)|(1<<ADPS2)|(1<<ADPS1)|(1<<ADPS0);  // Aktivera ADC och sätt prescaler till 128
-}
-
-void delay_ms(int ms) {
-    for (int i = 0; i < ms; i++) {
-        _delay_ms(1);  // Fördröjning på 1 ms
-    }
-}
-
-uint16_t ADC_Read(uint8_t ch) {
-    ch &= 0b00000111;  // Behåll endast de tre sista bitarna
-    ADMUX = (ADMUX & 0xF8)|ch;  // Rensa de tre sista bitarna innan ORing
-    ADCSRA |= (1<<ADSC);  // Starta enkel konvertering
-    while(!(ADCSRA & (1<<ADIF)));  // Vänta tills konverteringen är klar
-    ADCSRA|=(1<<ADIF);  // Rensa ADIF genom att skriva ett till det
-    return(ADC);  // Returnera ADC-värdet
-}
+// Global variable to store received character
+volatile char receivedChar;
+volatile uint16_t adcValue = 0;
 
 void USART_Init(unsigned int ubrr) {
-    UBRR0H = (unsigned char)(ubrr>>8);  // Sätt de högre 8 bitarna av baud rate-registret
-    UBRR0L = (unsigned char)ubrr;  // Sätt de lägre 8 bitarna av baud rate-registret
-    UCSR0B = (1<<RXEN0)|(1<<TXEN0);  // Aktivera mottagare och sändare
-    UCSR0C = (1<<USBS0)|(3<<UCSZ00);  // Sätt stoppbit och karaktärsstorlek
+    UBRR0H = (unsigned char)(ubrr >> 8); // Set baud rate
+    UBRR0L = (unsigned char)ubrr;
+    UCSR0B = (1 << RXEN0) | (1 << TXEN0); // Enable receiver and transmitter
+    UCSR0C = (1 << USBS0) | (3 << UCSZ00); // Set frame format: 8 data, 2 stop bit
+}
+
+void ADC_Init() {
+    ADMUX = (1 << REFS0); // AVCC with external capacitor at AREF pin
+    ADCSRA = (1 << ADEN) | (1 << ADPS2) | (1 << ADPS1) | (1 << ADPS0); // Enable ADC, prescaler 128
+}
+
+bool USART_Available() {
+    return (UCSR0A & (1 << RXC0)); // Return 1 if unread data in buffer
+}
+
+char USART_Receive() {
+    while (!(UCSR0A & (1 << RXC0))); // Wait for data to be received
+    return UDR0; // Get and return received data from buffer
 }
 
 void USART_Transmit(unsigned char data) {
-    while (!(UCSR0A & (1<<UDRE0)));  // Vänta tills bufferten är tom
-    UDR0 = data;  // Skicka data
+    while (!(UCSR0A & (1 << UDRE0))); // Wait for empty transmit buffer
+    UDR0 = data; // Put data into buffer, sends the data
 }
 
 void USART_SendString(const char* str) {
     while (*str) {
-        USART_Transmit(*str++);  // Skicka varje tecken i strängen
+        USART_Transmit(*str++); // Send each character in the string
     }
 }
